@@ -1,3 +1,5 @@
+#!usr/bin/env python
+
 import nltk
 import re
 from string import printable
@@ -27,9 +29,9 @@ def preprocess(output_file, *args):
                 for line in data:
                     line = line.lower()
                     line = remove_numbers_and_links(line.rstrip())
-                    if not has_weird_characters(line):
-                        print(separate_by_tok(line), file=dump)
+                   # if not has_weird_characters(line):
+                    print(separate_by_tok(line), file=dump)
 
 
 if __name__ == "__main__":
-    preprocess('2021_preprocessed.txt', 'news.2021')
+    preprocess('ru/ru_cleaned', 'ru/ru_2016')
