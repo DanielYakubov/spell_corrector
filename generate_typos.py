@@ -8,10 +8,12 @@ from pynini.lib import edit_transducer
 from preprocessing import remove_numbers_and_links
 from spell_corrector import SPANISH_ALPHABET, SPANISH_PUNCT, RUSSIAN_ALPHABET
 
+
 class TypoGenerator:
     """generates toy typos, useful for evaluating the spell checker"""
+
     def __init__(self, sigma_string, extra_punct=''):
-        self.disallowed_punct = """!"#$%&()*+,./:;<=>?@[\]^_`{|}~'""" + extra_punct # - might appear word internally
+        self.disallowed_punct = """!"#$%&()*+,./:;<=>?@[\]^_`{|}~'""" + extra_punct  # - might appear word internally
         self.sigma_string = sigma_string
         self.sigma_star = pynini.union(*sigma_string).star
 
@@ -36,7 +38,7 @@ class TypoGenerator:
         candidates_lattice = ET.create_lattice(token, self.sigma_star).optimize()
         try:
             candidates = [candidate for candidate in candidates_lattice.paths().ostrings()]
-        except:
+        except:  # TODO add LatticeIsEmpty error here
             return token
         return random.choice(candidates)
 
@@ -45,17 +47,17 @@ class TypoGenerator:
         word to corrupt in 3 tries, the original sentence is returned"""
         sentence = remove_numbers_and_links(sentence.lower())
         toks = nltk.word_tokenize(sentence)
-        typo_word_index = random.randint(0, len(toks)-1)
+        typo_word_index = random.randint(0, len(toks) - 1)
         typo_candidate = toks[typo_word_index]
 
         for tries in range(3):
             if not set(typo_candidate).intersection(set(self.disallowed_punct)) \
-            and not set(typo_candidate) - set(self.sigma_string):
+                    and not set(typo_candidate) - set(self.sigma_string):
                 break
-            typo_word_index = random.randint(0, len(toks)-1)
+            typo_word_index = random.randint(0, len(toks) - 1)
             typo_candidate = toks[typo_word_index]
         else:
-            return sentence # failsafe, for super rare but possible cases
+            return sentence  # failsafe, for super rare but possible cases
 
         if set(typo_candidate).intersection(set(self.disallowed_punct)) \
                 or set(typo_candidate) - set(self.sigma_string):
@@ -77,6 +79,7 @@ class TypoGenerator:
                     if i == lines_lim:
                         break
 
+
 if __name__ == '__main__':
     # en_tg = TypoGenerator(string.ascii_lowercase + '-')
     # en_tg.corrupt_document('en/test_en', 'en/en_typos.tsv')
@@ -84,5 +87,6 @@ if __name__ == '__main__':
     # sp_tg = TypoGenerator(SPANISH_ALPHABET, extra_punct=SPANISH_PUNCT)
     # sp_tg.corrupt_document('es/test_es', 'es/es_typos.tsv')
 
-    ru_tg = TypoGenerator(RUSSIAN_ALPHABET)
-    ru_tg.corrupt_document('ru/test_ru', 'ru/ru_typos.tsv')
+    # ru_tg = TypoGenerator(RUSSIAN_ALPHABET)
+    # ru_tg.corrupt_document('ru/test_ru', 'ru/ru_typos.tsv')
+    pass

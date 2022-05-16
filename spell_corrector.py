@@ -1,4 +1,5 @@
 import pynini
+import pandas as pd
 import string
 import csv
 import nltk
@@ -8,9 +9,10 @@ from typing import List
 from preprocessing import remove_numbers_and_links, separate_by_tok, has_weird_characters
 from pynini.lib import edit_transducer
 
-SPANISH_ALPHABET = 'ùewàgkclëfusìòbáixúzanhtjïmîoórñíþqdvpéèy'
+SPANISH_ALPHABET = 'ewgkclfusbáixúzanhtjmoórñíþqdvpéyü'
 SPANISH_PUNCT = '¿¡'
 RUSSIAN_ALPHABET = 'цуьфекдгмйтчспхювщонъжэяёирлбазш'
+
 
 class SpellCorrector(object):
 
@@ -22,6 +24,10 @@ class SpellCorrector(object):
         self.lm = pynini.Fst.read(lm_file)
 
     def _make_subsausage(self, token: str) -> pynini.Fst:
+
+        if 'NUM' in token or 'LINK' in token:
+            return token
+
         tok_len = len(token)
         if tok_len <= 4:
             bound = 1
@@ -43,15 +49,13 @@ class SpellCorrector(object):
         token_fsts = []
         for token in tokens:
             if not self.sym.member(token):
-                self.sym.add_symbol(token) # prevent a composition failure
+                self.sym.add_symbol(token)  # prevent a composition failure
             token_fsts.append(pynini.accep(token, token_type=self.sym))
 
         confusion_sentences = []
         for i, tok in enumerate(tokens):
             one_confusion_set_sent = token_fsts.copy()
-            if tok not in string.punctuation and tok[-1] not in string.punctuation\
-                    and tok[0] not in string.punctuation and \
-                    tok not in ['LINK', 'NUM']: # not trying to correct punctuation, only words
+            if not set(tok) - set(self.sigma_string) and len(token) < 15:  # can't correct something out of sigma star
                 one_confusion_set_sent[i] = self._make_subsausage(tok)
             sent = pynini.accep('', token_type=self.sym)
             for fst in one_confusion_set_sent:
@@ -60,25 +64,54 @@ class SpellCorrector(object):
         return (pynini.union(*confusion_sentences) @ self.lm).optimize()
 
     def best_sentence(self, sentence: str) -> str:
-        assert not has_weird_characters(sentence), \
-            "The sentence contains characters not present in Sigma Star"
-        sentence = sentence.lower()
         sentence = remove_numbers_and_links(sentence)
-        # special case
-        sentence = re.sub("^1| 1 ", " one ", sentence)
         toks = nltk.word_tokenize(sentence)
-        poss_sent_fst = self.make_lattice(toks)
+
+        cleaned_toks = []
+        for tok in toks:
+            if 'NUM' in tok or 'LINK' in tok:
+                cleaned_toks.append(tok)
+            else:
+                cleaned_toks.append(tok.casefold())
+
+        poss_sent_fst = self.make_lattice(cleaned_toks)
         if poss_sent_fst.start() == -1:
-            return sentence # this means the lattice was empty, everything was OOV or punct
+            return sentence  # this means the lattice was empty, everything was OOV or punct
         return pynini.shortestpath(poss_sent_fst).string(token_type=self.sym)
 
 
 if __name__ == '__main__':
-    word_punct = "'-`"
-    en_alpha = string.ascii_letters
-    en_sp = SpellCorrector(string.ascii_lowercase + word_punct, 'en/en.sym', 'en/en_smaller.lm')
-    print(en_sp.best_sentence("that spy received us all!"))
-    # with open('eng_typos.tsv', 'r') as en_typos:
-    #     tsv_reader = csv.reader(en_typos, delimiter='\t')
-    #     for row in tsv_reader:
-    #         print(row[1], en_sp.best_sentence(row[1]))
+    word_punct = "'-"
+
+    # en_sp = SpellCorrector(string.ascii_lowercase + word_punct, 'en/en.sym', 'en/en_smaller.lm')
+    # en_df = pd.read_csv('en/en_typos.tsv', delimiter='\t', header=0)
+    # en_pred = []
+    # for i, row in en_df.iterrows():
+    #     print(row["corrupted"])
+    #     pred = en_sp.best_sentence(row["corrupted"])
+    #     print(pred)
+    #     en_pred.append(pred)
+    # en_df['pred'] = en_pred
+    # en_df.to_csv('en/en_typos_pred', sep='\t')
+
+    es_sp = SpellCorrector(SPANISH_ALPHABET + '-', 'es/es.sym', 'es/es_smaller.lm')
+    es_df = pd.read_csv('es/es_typos.tsv', delimiter='\t', header=0)
+    es_pred = []
+    for i, row in es_df.iterrows():
+        print(row["corrupted"])
+        pred = es_sp.best_sentence(row["corrupted"])
+        print(pred)
+        es_pred.append(pred)
+    es_df['pred'] = es_pred
+    es_df.to_csv('es/es_typos_pred', sep='\t')
+
+    ru_sp = SpellCorrector(RUSSIAN_ALPHABET + '-', 'ru/ru.sym', 'ru/ru_smaller.lm')
+    ru_df = pd.read_csv('ru/ru_typos.tsv', delimiter='\t', header=0)
+    ru_pred = []
+    for i, row in ru_df.iterrows():
+        print(row["corrupted"])
+        pred = ru_sp.best_sentence(row["corrupted"])
+        print(pred)
+        ru_pred.append(pred)
+    ru_df['pred'] = es_pred
+    ru_df.to_csv('ru/ru_typos_pred', sep='\t')
