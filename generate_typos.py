@@ -30,16 +30,13 @@ class TypoGenerator:
             bound = 2
         else:
             bound = 3
-        print(token)
 
+        # todo random walk instead of this
         token = pynini.escape(token)
         ET = edit_transducer.EditTransducer(self.sigma_string,
                                             bound=bound)
         candidates_lattice = ET.create_lattice(token, self.sigma_star).optimize()
-        try:
-            candidates = [candidate for candidate in candidates_lattice.paths().ostrings()]
-        except:  # TODO add LatticeIsEmpty error here
-            return token
+        candidates = [candidate for candidate in candidates_lattice.paths().ostrings()]
         return random.choice(candidates)
 
     def corrupt_sentence(self, sentence: str) -> str:
@@ -81,12 +78,11 @@ class TypoGenerator:
 
 
 if __name__ == '__main__':
-    # en_tg = TypoGenerator(string.ascii_lowercase + '-')
-    # en_tg.corrupt_document('en/test_en', 'en/en_typos.tsv')
+    en_tg = TypoGenerator(string.ascii_lowercase + '-')
+    en_tg.corrupt_document('en/test_en', 'en/en_typos.tsv')
 
-    # sp_tg = TypoGenerator(SPANISH_ALPHABET, extra_punct=SPANISH_PUNCT)
-    # sp_tg.corrupt_document('es/test_es', 'es/es_typos.tsv')
+    sp_tg = TypoGenerator(SPANISH_ALPHABET, extra_punct=SPANISH_PUNCT)
+    sp_tg.corrupt_document('es/test_es', 'es/es_typos.tsv')
 
-    # ru_tg = TypoGenerator(RUSSIAN_ALPHABET)
-    # ru_tg.corrupt_document('ru/test_ru', 'ru/ru_typos.tsv')
-    pass
+    ru_tg = TypoGenerator(RUSSIAN_ALPHABET)
+    ru_tg.corrupt_document('ru/test_ru', 'ru/ru_typos.tsv')
