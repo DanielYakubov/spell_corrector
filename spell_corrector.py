@@ -6,7 +6,7 @@ import nltk
 import re
 
 from typing import List
-from preprocessing import remove_numbers_and_links, separate_by_tok, has_weird_characters
+from preprocessing import remove_numbers_and_links
 from pynini.lib import edit_transducer
 
 SPANISH_ALPHABET = 'ewgkclfusbáixúzanhtjmoórñíþqdvpéyü'
@@ -21,7 +21,16 @@ class SpellCorrector(object):
         self.sigma_string = sigma_string
         self.sigma_star = pynini.union(*sigma_string).star
         self.sym = pynini.SymbolTable.read_text(sym_file)
+        self.sym_fst = self._make_sym_fst(self.sym)
         self.lm = pynini.Fst.read(lm_file)
+
+    def _make_sym_fst(self, sym):
+        sym_iter = iter(sym)
+        lex = [pynini.escape(symbol) for _, symbol in sym_iter]
+        return pynini.string_map(lex).optimize()
+
+    def _update_sym_fst(self, token):
+        self.sym_fst.union(token).optimize()
 
     def _make_subsausage(self, token: str) -> pynini.Fst:
 
@@ -39,7 +48,7 @@ class SpellCorrector(object):
         token = pynini.escape(token)
         ET = edit_transducer.EditTransducer(self.sigma_string,
                                             bound=bound)
-        candidates_lattice = ET.create_lattice(token, self.sigma_star).optimize()
+        candidates_lattice = ET.create_lattice(token, self.sigma_star).optimize() @ self.sym_fst
         candidates = candidates_lattice.paths().ostrings()
         valid_candidates = [pynini.accep(c, token_type=self.sym) for c in candidates
                             if self.sym.member(c)]
@@ -50,6 +59,7 @@ class SpellCorrector(object):
         for token in tokens:
             if not self.sym.member(token):
                 self.sym.add_symbol(token)  # prevent a composition failure
+                self._update_sym_fst(token)
             token_fsts.append(pynini.accep(token, token_type=self.sym))
 
         confusion_sentences = []
@@ -83,16 +93,16 @@ class SpellCorrector(object):
 if __name__ == '__main__':
     word_punct = "'-"
 
-    # en_sp = SpellCorrector(string.ascii_lowercase + word_punct, 'en/en.sym', 'en/en_smaller.lm')
-    # en_df = pd.read_csv('en/en_typos.tsv', delimiter='\t', header=0)
-    # en_pred = []
-    # for i, row in en_df.iterrows():
-    #     print(row["corrupted"])
-    #     pred = en_sp.best_sentence(row["corrupted"])
-    #     print(pred)
-    #     en_pred.append(pred)
-    # en_df['pred'] = en_pred
-    # en_df.to_csv('en/en_typos_pred', sep='\t')
+    en_sp = SpellCorrector(string.ascii_lowercase + word_punct, 'en/en.sym', 'en/en_smaller.lm')
+    en_df = pd.read_csv('en/en_typos.tsv', delimiter='\t', header=0)
+    en_pred = []
+    for i, row in en_df.iterrows():
+        print(row["corrupted"])
+        pred = en_sp.best_sentence(row["corrupted"])
+        print(pred)
+        en_pred.append(pred)
+    en_df['pred'] = en_pred
+    en_df.to_csv('en/en_typos_pred', sep='\t')
 
     es_sp = SpellCorrector(SPANISH_ALPHABET + '-', 'es/es.sym', 'es/es_smaller.lm')
     es_df = pd.read_csv('es/es_typos.tsv', delimiter='\t', header=0)
