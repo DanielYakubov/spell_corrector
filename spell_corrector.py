@@ -102,7 +102,7 @@ if __name__ == '__main__':
         print(pred)
         en_pred.append(pred)
     en_df['pred'] = en_pred
-    en_df.to_csv('en/en_typos_pred', sep='\t')
+    en_df.to_csv('en/en_typos_pred.tsv', sep='\t')
 
     es_sp = SpellCorrector(SPANISH_ALPHABET + '-', 'es/es.sym', 'es/es_smaller.lm')
     es_df = pd.read_csv('es/es_typos.tsv', delimiter='\t', header=0)
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         print(pred)
         es_pred.append(pred)
     es_df['pred'] = es_pred
-    es_df.to_csv('es/es_typos_pred', sep='\t')
+    es_df.to_csv('es/es_typos_pred.tsv', sep='\t')
 
     ru_sp = SpellCorrector(RUSSIAN_ALPHABET + '-', 'ru/ru.sym', 'ru/ru_smaller.lm')
     ru_df = pd.read_csv('ru/ru_typos.tsv', delimiter='\t', header=0)
@@ -123,5 +123,5 @@ if __name__ == '__main__':
         pred = ru_sp.best_sentence(row["corrupted"])
         print(pred)
         ru_pred.append(pred)
-    ru_df['pred'] = es_pred
-    ru_df.to_csv('ru/ru_typos_pred', sep='\t')
+    ru_df['pred'] = ru_pred
+    ru_df.to_csv('ru/ru_typos_pred.tsv', sep='\t')
