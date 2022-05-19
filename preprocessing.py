@@ -2,8 +2,6 @@
 
 import nltk
 import re
-from string import printable
-
 
 def separate_by_tok(line):
     return ' '.join(nltk.word_tokenize(line))
@@ -15,11 +13,6 @@ def remove_numbers_and_links(line):
     return re.sub('www\.\S+', 'LINK', line) # getting the stragglers from line 12
 
 
-# from https://stackoverflow.com/questions/3094498/how-can-i-check-if-a-python-unicode-string-contains-non-western-letters
-def has_weird_characters(line):
-    return bool(set(line) - set(printable))
-
-
 def preprocess(output_file, *args):
     with open(output_file, 'w') as dump:
         for input_file in args:
@@ -29,7 +22,6 @@ def preprocess(output_file, *args):
                 for line in data:
                     line = line.lower()
                     line = remove_numbers_and_links(line.rstrip())
-                   # if not has_weird_characters(line):
                     print(separate_by_tok(line), file=dump)
 
 
